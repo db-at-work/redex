@@ -1,0 +1,8 @@
+services:
+  redfish-explorer:
+    build: .
+    ports:
+      - "9876:8000"
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: always
