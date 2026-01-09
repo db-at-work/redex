@@ -64,19 +64,31 @@ async function fetchWithCache(path: string, isPriority = false) {
     findLinksToQueue(res.data);
     return res.data;
   } catch (e) {
-    // Handle Session Expiry / Access Denied
-    if (e.response?.status === 401 || e.message.includes('AccessDenied')) {
-        statusMessage.value = "Session expired. Reconnecting...";
-        await login(); // Refresh token
-        return fetchWithCache(path, isPriority); // Retry original request
+    const isAuthError = e.response?.status === 401 || 
+                        e.message?.includes('AccessDenied') || 
+                        (e.response?.data?.error && JSON.stringify(e.response.data).includes('Security'));
+
+    if (isAuthError) {
+        statusMessage.value = "Session expired. Re-authenticating...";
+        await login(); // This refreshes token.value
+        
+        // If it was a background task, put it back in the queue
+        if (!isPriority) {
+          fetchQueue.value.unshift(path); 
+          return; 
+        }
+        // If it was a click, retry immediately
+        return fetchWithCache(path, true);
     }
     
+    // Log non-auth errors (like 404s or 500s) but don't stop the scanner
     const errObj = { error: "Fetch Failed", message: e.message, path };
     cache[path] = errObj;
     return errObj;
   } finally {
     activeFetches.value--;
-    if (isScanning.value) processQueue();
+    // Ensure the scanner keeps moving even after an error
+    if (isScanning.value) setTimeout(processQueue, 100); 
   }
 }
 
@@ -85,10 +97,17 @@ onUnmounted(() => clearInterval(keepAliveTimer));
 
 function findLinksToQueue(data: any) {
   if (!data || typeof data !== 'object' || !isScanning.value) return;
+  
   Object.entries(data).forEach(([key, val]) => {
-    // Check for @odata.id but SKIP Actions (keys starting with #)
-    if (key === '@odata.id' && typeof val === 'string' && !cache[val] && !fetchQueue.value.includes(val)) {
-      if (!val.includes('$metadata')) fetchQueue.value.push(val);
+    if (key === '@odata.id' && typeof val === 'string') {
+      // Logic: Ignore metadata, fragments (#), and Actions
+      const isNavigable = !val.includes('$metadata') && 
+                          !val.includes('#') && 
+                          !key.startsWith('#');
+                          
+      if (isNavigable && !cache[val] && !fetchQueue.value.includes(val)) {
+        fetchQueue.value.push(val);
+      }
     } else if (typeof val === 'object' && !key.startsWith('#')) {
       findLinksToQueue(val);
     }
