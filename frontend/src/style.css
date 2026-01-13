@@ -1,0 +1,134 @@
+:root {
+    --bg-dark: #0d1117;
+    --panel-bg: #161b22;
+    --border: #30363d;
+    --text-main: #c9d1d9;
+    --accent: #58a6ff;
+    --success: #238636;
+    --warning: #d29922;
+    --error: #f85149;
+}
+
+body {
+    background: var(--bg-dark);
+    color: var(--text-main);
+    font-family: sans-serif;
+    margin: 0;
+}
+
+.console-header {
+    background: var(--panel-bg);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 2rem;
+}
+
+.tab-nav {
+    display: flex;
+    padding: 0 2rem;
+    gap: 1rem;
+}
+
+.tab {
+    background: none;
+    border: none;
+    color: #8b949e;
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: 0.2s;
+}
+
+.tab.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+}
+
+.status-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.status-card {
+    background: var(--panel-bg);
+    border: 1px solid var(--border);
+    padding: 1.5rem;
+    border-radius: 6px;
+}
+
+.panel {
+    background: var(--panel-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    margin-bottom: 1.5rem;
+}
+
+.panel-header {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--border);
+    font-weight: bold;
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.panel-body {
+    padding: 1rem;
+}
+
+.badge {
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 0.75rem;
+    font-weight: bold;
+}
+
+.badge-success {
+    background: rgba(35, 134, 54, 0.2);
+    color: #3fb950;
+}
+
+.badge-warning {
+    background: rgba(187, 128, 9, 0.2);
+    color: #d29922;
+}
+
+.badge-error {
+    background: rgba(248, 81, 73, 0.2);
+    color: #f85149;
+}
+
+/* Tree Styles */
+.tree-line {
+    font-family: 'Consolas', monospace;
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.clickable-row {
+    cursor: pointer;
+}
+
+.clickable-row:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.search-match {
+    background: rgba(255, 255, 0, 0.15);
+}
+
+.arrow.unscanned {
+    color: #d29922;
+}
+
+.arrow.scanned {
+    color: #3fb950;
+}
