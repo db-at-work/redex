@@ -11,7 +11,13 @@
           <p class="header-subtitle">{{ bmcUrl }}</p>
         </div>
       </div>
-      <button @click="handleLogout" class="btn-disconnect">Disconnect</button>
+      <div class="header-right">
+        <div class="scan-indicator" :class="{ 'is-active': activeFetches > 0 }">
+          <span class="spinner" v-if="activeFetches > 0"></span>
+          <span class="status-text">{{ statusMessage }}</span>
+        </div>
+        <button @click="handleLogout" class="btn-disconnect">Disconnect</button>
+      </div>
     </div>
 
     <nav class="tab-nav">
@@ -52,6 +58,9 @@ const tabs = [
 ];
 
 function handleLogout() {
-  logout();
+  if (confirm("Disconnect from BMC?")) {
+    logout();
+  }
 }
 </script>
+

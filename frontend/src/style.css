@@ -1,21 +1,113 @@
+/* src/style.css */
+
 :root {
     --bg-dark: #0d1117;
     --panel-bg: #161b22;
     --border: #30363d;
     --text-main: #c9d1d9;
+    --text-bright: #ffffff;
+    --text-dim: #8b949e;
     --accent: #58a6ff;
     --success: #238636;
     --warning: #d29922;
     --error: #f85149;
+    --success-text: #3fb950;
+}
+
+/* 1. Global Reset & Body */
+* {
+    box-sizing: border-box;
 }
 
 body {
-    background: var(--bg-dark);
-    color: var(--text-main);
-    font-family: sans-serif;
     margin: 0;
+    padding: 0;
+    background-color: var(--bg-dark);
+    color: var(--text-main);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
 }
 
+/* 2. Common Elements */
+svg {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    flex-shrink: 0;
+}
+
+input {
+    background: var(--bg-dark);
+    border: 1px solid var(--border);
+    color: var(--text-bright);
+    padding: 12px;
+    border-radius: 6px;
+    font-size: 16px;
+    outline: none;
+}
+
+input:focus {
+    border-color: var(--accent);
+}
+
+button {
+    cursor: pointer;
+    transition: filter 0.2s;
+}
+
+button:hover {
+    filter: brightness(1.2);
+}
+
+/* 3. Login Screen */
+.login-screen {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    background-color: var(--bg-dark);
+    padding: 20px;
+}
+
+.login-card {
+    background: var(--panel-bg);
+    padding: 40px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    width: 100%;
+    max-width: 420px;
+    /* Constrains the box itself */
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+.icon-server {
+    width: 48px;
+    height: 48px;
+    color: var(--accent);
+    margin: 0 auto 20px auto;
+    display: block;
+    /* Centers the icon only */
+}
+
+/* Ensure form elements fill the card width */
+form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    width: 100%;
+}
+
+input {
+    width: 100%;
+    /* Makes inputs span the full width of the card */
+    background: var(--bg-dark);
+    border: 1px solid var(--border);
+    color: var(--text-bright);
+    padding: 12px;
+    border-radius: 6px;
+    font-size: 16px;
+}
+
+/* 4. Header & Navigation */
 .console-header {
     background: var(--panel-bg);
     border-bottom: 1px solid var(--border);
@@ -31,32 +123,54 @@ body {
     padding: 1rem 2rem;
 }
 
+.icon-server-small {
+    width: 32px;
+    height: 32px;
+    color: var(--accent);
+}
+
+.header-title {
+    margin: 0;
+    font-size: 1.25rem;
+    color: var(--text-bright);
+}
+
+.header-subtitle {
+    margin: 0;
+    color: var(--text-dim);
+    font-family: monospace;
+    font-size: 0.85rem;
+}
+
 .tab-nav {
     display: flex;
     padding: 0 2rem;
-    gap: 1rem;
+    gap: 0.5rem;
+    background: var(--bg-dark);
 }
 
 .tab {
     background: none;
     border: none;
-    color: #8b949e;
+    color: var(--text-dim);
     padding: 0.75rem 1rem;
-    cursor: pointer;
     border-bottom: 2px solid transparent;
     transition: 0.2s;
+    font-size: 0.9rem;
 }
 
 .tab.active {
     color: var(--accent);
     border-bottom-color: var(--accent);
+    background: rgba(88, 166, 255, 0.05);
 }
 
+/* 5. Dashboard & Panels */
 .status-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: 1rem;
-    margin-bottom: 2rem;
+    margin: 2rem;
 }
 
 .status-card {
@@ -70,13 +184,14 @@ body {
     background: var(--panel-bg);
     border: 1px solid var(--border);
     border-radius: 6px;
-    margin-bottom: 1.5rem;
+    margin: 1rem 2rem;
 }
 
 .panel-header {
     padding: 0.75rem 1rem;
     border-bottom: 1px solid var(--border);
     font-weight: bold;
+    color: var(--text-bright);
     background: rgba(255, 255, 255, 0.02);
 }
 
@@ -84,6 +199,7 @@ body {
     padding: 1rem;
 }
 
+/* 6. Badges & Status */
 .badge {
     padding: 2px 8px;
     border-radius: 10px;
@@ -93,28 +209,24 @@ body {
 
 .badge-success {
     background: rgba(35, 134, 54, 0.2);
-    color: #3fb950;
+    color: var(--success-text);
 }
 
 .badge-warning {
     background: rgba(187, 128, 9, 0.2);
-    color: #d29922;
+    color: var(--warning);
 }
 
 .badge-error {
     background: rgba(248, 81, 73, 0.2);
-    color: #f85149;
+    color: var(--error);
 }
 
-/* Tree Styles */
+/* 7. Redfish Tree View */
 .tree-line {
     font-family: 'Consolas', monospace;
     font-size: 13px;
     line-height: 1.6;
-}
-
-.clickable-row {
-    cursor: pointer;
 }
 
 .clickable-row:hover {
@@ -126,9 +238,50 @@ body {
 }
 
 .arrow.unscanned {
-    color: #d29922;
+    color: var(--warning);
 }
 
 .arrow.scanned {
-    color: #3fb950;
+    color: var(--success-text);
+}
+
+/* 8. Tables */
+.fru-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.fru-table th {
+    text-align: left;
+    padding: 12px;
+    border-bottom: 2px solid var(--border);
+    color: var(--accent);
+}
+
+.fru-table td {
+    padding: 12px;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.9rem;
+}
+
+/* 9. Buttons */
+.btn-connect {
+    width: 100%;
+    /* Makes button span the full width of the card */
+    background: var(--success);
+    color: var(--text-bright);
+    border: none;
+    padding: 14px;
+    border-radius: 6px;
+    font-weight: bold;
+    font-size: 1rem;
+    cursor: pointer;
+}
+
+.btn-disconnect {
+    background: var(--panel-bg);
+    border: 1px solid var(--border);
+    color: var(--error);
+    padding: 6px 12px;
+    border-radius: 6px;
 }

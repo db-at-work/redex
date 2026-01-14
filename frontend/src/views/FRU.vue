@@ -46,9 +46,3 @@ import { useRedfish } from '../composables/useRedfish';
 
 const { systemData, chassisData, powerData } = useRedfish();
 </script>
-
-<style scoped>
-.fru-table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
-.fru-table th { text-align: left; padding: 12px; border-bottom: 2px solid var(--border); color: var(--accent); }
-.fru-table td { padding: 12px; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
-</style>

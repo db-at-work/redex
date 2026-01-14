@@ -62,30 +62,41 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import InfoPanel from '../components/InfoPanel.vue';
+import InfoRow from '../components/InfoRow.vue';
+import StatusCard from '../components/StatusCard.vue';
 import { useRedfish } from '../composables/useRedfish';
 
 const { systemData, managerData, thermalData, powerData, logServiceData } = useRedfish();
 
 const avgTemp = computed(() => {
-  if (!thermalData.value?.Temperatures) return 'N/A';
-  const temps = thermalData.value.Temperatures
-    .filter((t: any) => t.ReadingCelsius)
+  // Use optional chaining on Temperatures array
+  const temps = thermalData.value?.Temperatures;
+  if (!temps || !Array.isArray(temps) || temps.length === 0) return 'N/A';
+  
+  const validReadings = temps
+    .filter((t: any) => t.ReadingCelsius !== undefined)
     .map((t: any) => t.ReadingCelsius);
-  if (temps.length === 0) return 'N/A';
-  const avg = temps.reduce((a: number, b: number) => a + b) / temps.length;
+    
+  if (validReadings.length === 0) return 'N/A';
+  
+  const avg = validReadings.reduce((a: number, b: number) => a + b, 0) / validReadings.length;
   return Math.round(avg) + '°C';
 });
 
 const fanStatus = computed(() => {
-  if (!thermalData.value?.Fans) return 'Unknown';
-  const allHealthy = thermalData.value.Fans.every((f: any) => 
+  const fans = thermalData.value?.Fans;
+  // Check if fans exist and is an array before calling .every()
+  if (!fans || !Array.isArray(fans) || fans.length === 0) return 'Unknown';
+  
+  const allHealthy = fans.every((f: any) => 
     f.Status?.Health === 'OK' || f.Status?.State === 'Enabled'
   );
   return allHealthy ? 'Normal' : 'Warning';
 });
 
 const powerUsage = computed(() => {
-  if (!powerData.value?.PowerControl?.[0]?.PowerConsumedWatts) return 'N/A';
-  return powerData.value.PowerControl[0].PowerConsumedWatts + 'W';
+  // Deep optional chaining for power control
+  const watts = powerData.value?.PowerControl?.[0]?.PowerConsumedWatts;
+  return watts ? watts + 'W' : 'N/A';
 });
 </script>
