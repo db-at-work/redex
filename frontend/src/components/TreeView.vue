@@ -1,109 +1,110 @@
 <template>
-  <div class="tree-container">
-    <TreeNode 
-      v-if="rootData"
-      :node-data="rootData" 
-      :fetch-fn="fetchWithCache" 
-      :cache="cache" 
-      :search="search"
-    />
+  <div class="tree-view">
+    <!-- Loading state -->
+    <div v-if="cacheKeys.length === 0" class="loading-state">
+      <span class="loading-icon">⏳</span>
+      <p>Loading data...</p>
+      <p class="loading-hint">Please wait while data is being fetched</p>
+    </div>
+    
+    <!-- Tree content -->
+    <div v-else>
+      <div 
+        v-for="key in displayedKeys" 
+        :key="key"
+        class="tree-root"
+      >
+        <div 
+          class="path-header" 
+          :class="{ 'has-error': cache[key]?.error }"
+          @click="togglePath(key)"
+        >
+          <span class="expand-icon">{{ expandedPaths.has(key) ? '▼' : '▶' }}</span>
+          <span class="path-name">{{ key }}</span>
+          <span v-if="cache[key]?.error" class="error-badge" :title="cache[key].message">
+            ⚠️ {{ cache[key].error }}
+          </span>
+          <span v-else-if="getObjectSize(cache[key])" class="item-count">
+            {{ getObjectSize(cache[key]) }} items
+          </span>
+        </div>
+        
+        <div v-if="expandedPaths.has(key)" class="tree-content">
+          <TreeNode 
+            v-if="cache[key]"
+            :data="cache[key]" 
+            :path="key"
+            :search="search"
+            :level="0"
+          />
+        </div>
+      </div>
+    </div>
+    
+    <!-- Empty search results -->
+    <div v-if="cacheKeys.length > 0 && displayedKeys.length === 0" class="empty-state">
+      <span class="empty-icon">🔍</span>
+      <p>No results found</p>
+      <p class="empty-hint">Try a different search term</p>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { defineComponent, h, ref } from 'vue';
+import { computed, ref } from 'vue';
 import { useRedfish } from '../composables/useRedfish';
+import TreeNode from './TreeNode.vue';
 
-defineProps<{
-  search?: string;
+const props = defineProps<{
+  search: string;
 }>();
 
-const { cache, fetchWithCache } = useRedfish();
-const rootData = cache['/redfish/v1/'];
+const { cache } = useRedfish();
+const expandedPaths = ref(new Set<string>());
 
-const TreeNode = defineComponent({
-  name: 'TreeNode',
-  props: ['nodeData', 'fetchFn', 'cache', 'search'],
-  setup(props) {
-    const localExpanded = ref<Record<string, boolean>>({});
-    const priorityLoading = ref<Record<string, boolean>>({});
-
-    const handleExpand = async (key: string, path: string) => {
-      if (localExpanded.value[key]) {
-        localExpanded.value[key] = false;
-        return;
-      }
-
-      if (path && !props.cache[path]) {
-        priorityLoading.value[key] = true;
-        await props.fetchFn(path, true);
-        priorityLoading.value[key] = false;
-      }
-      
-      localExpanded.value[key] = true;
-    };
-    
-    return { localExpanded, priorityLoading, handleExpand };
-  },
-  render() {
-    if (!this.nodeData || typeof this.nodeData !== 'object') {
-      return h('span', { class: 'val-p' }, JSON.stringify(this.nodeData));
-    }
-
-    return h('div', { class: 'node-box' }, 
-      Object.entries(this.nodeData).map(([key, val]) => {
-        let path = null;
-        if (!key.startsWith('#')) {
-           if (typeof val === 'string' && val.startsWith('/redfish/v1') && !val.includes('$metadata')) {
-             path = val;
-           } else if (val && typeof val === 'object' && val['@odata.id']) {
-             path = val['@odata.id'];
-           }
-        }
-
-        const isLocal = val !== null && typeof val === 'object' && !path;
-        const expanded = !!this.localExpanded[key];
-        const loading = !!this.priorityLoading[key];
-        const cached = path ? this.cache[path] : null;
-
-        const isMatch = this.search && (
-          key.toLowerCase().includes(this.search.toLowerCase()) || 
-          JSON.stringify(val).toLowerCase().includes(this.search.toLowerCase())
-        );
-
-        return h('div', { class: ['tree-line', isMatch ? 'search-match' : ''], key: key }, [
-          h('div', { 
-            class: ['line-core', (path || isLocal) ? 'clickable-row' : ''],
-            onClick: (path || isLocal) ? () => this.handleExpand(key, path) : undefined
-          }, [
-            h('span', { class: 'tree-key' }, `"${key}": `),
-            
-            path 
-              ? h('span', { class: 'tree-val-str' }, `"${path}"`)
-              : isLocal 
-                ? h('span', { class: 'obj-placeholder' }, Array.isArray(val) ? '[ ... ]' : '{ ... }')
-                : h('span', { class: typeof val === 'string' ? 'tree-val-str' : 'tree-val-num' }, JSON.stringify(val)),
-            
-            (path || isLocal) ? h('span', { 
-              class: ['arrow', path ? (cached ? 'scanned' : 'unscanned') : 'local'] 
-            }, expanded ? ' ▾' : ' ▸') : null,
-
-            h('span', { class: 'punct' }, ',')
-          ]),
-
-          loading ? h('div', { class: 'prio-msg' }, '⚡ Priority Fetching...') : null,
-
-          expanded ? h('div', { class: 'indent-box' }, [
-             h(TreeNode, { 
-               nodeData: path ? (cached || { "State": "Waiting..." }) : val, 
-               fetchFn: this.fetchFn,
-               cache: this.cache,
-               search: this.search
-             })
-          ]) : null
-        ]);
-      })
-    );
-  }
+// Get all cache keys as a computed array
+const cacheKeys = computed(() => {
+  // Only show /redfish/v1/ as the single root
+  const keys = Object.keys(cache);
+  return keys.filter(key => key === '/redfish/v1/').sort();
 });
+
+// Filter displayed keys based on search
+const displayedKeys = computed(() => {
+  const keys = cacheKeys.value;
+  
+  if (!props.search.trim()) {
+    return keys;
+  }
+  
+  const searchLower = props.search.toLowerCase();
+  return keys.filter(key => {
+    // Search in path
+    if (key.toLowerCase().includes(searchLower)) {
+      return true;
+    }
+    
+    // Search in data content
+    const data = cache[key];
+    if (data) {
+      const dataStr = JSON.stringify(data).toLowerCase();
+      return dataStr.includes(searchLower);
+    }
+    
+    return false;
+  });
+});
+
+function togglePath(path: string) {
+  if (expandedPaths.value.has(path)) {
+    expandedPaths.value.delete(path);
+  } else {
+    expandedPaths.value.add(path);
+  }
+}
+
+function getObjectSize(obj: any): number {
+  if (!obj || typeof obj !== 'object') return 0;
+  return Object.keys(obj).length;
+}
 </script>

@@ -9,7 +9,7 @@ import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 app = FastAPI()
 
-# Simple session store
+# Session store: token -> {ip, username, password}
 sessions = {} 
 
 class LoginRequest(BaseModel):
@@ -24,18 +24,58 @@ def login(req: LoginRequest):
         resp = requests.post(url, json={"UserName": req.username, "Password": req.password}, verify=False, timeout=5)
         if resp.status_code == 201:
             token = resp.headers.get("X-Auth-Token")
-            sessions[token] = req.ip
+            # Store credentials securely for session renewal
+            sessions[token] = {
+                "ip": req.ip,
+                "username": req.username,
+                "password": req.password
+            }
             return {"token": token, "ip": req.ip}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     raise HTTPException(status_code=401, detail="Auth Failed")
 
+@app.post("/api/renew-session")
+def renew_session(x_auth_token: str = Header(None)):
+    """
+    Renew an existing session by creating a new session with stored credentials.
+    This is called when a 401 is detected to seamlessly re-authenticate.
+    """
+    if not x_auth_token or x_auth_token not in sessions:
+        raise HTTPException(status_code=401, detail="No session to renew")
+
+    session = sessions[x_auth_token]
+    url = f"https://{session['ip']}/redfish/v1/SessionService/Sessions"
+
+    try:
+        resp = requests.post(
+            url,
+            json={"UserName": session["username"], "Password": session["password"]},
+            verify=False,
+            timeout=5
+        )
+        if resp.status_code == 201:
+            new_token = resp.headers.get("X-Auth-Token")
+            # Copy credentials to new token and cleanup old session
+            sessions[new_token] = session.copy()
+            del sessions[x_auth_token]
+            return {"token": new_token, "ip": session["ip"]}
+    except Exception as e:
+        # Clean up expired session on renewal failure
+        del sessions[x_auth_token]
+        raise HTTPException(status_code=500, detail=str(e))
+
+    # Clean up expired session on renewal failure
+    del sessions[x_auth_token]
+    raise HTTPException(status_code=401, detail="Session renewal failed")
+
 @app.api_route("/api/proxy", methods=["GET", "POST"])
 async def proxy(request: Request, path: str, x_auth_token: str = Header(None)):
     if x_auth_token not in sessions:
         raise HTTPException(status_code=401, detail="Session Expired")
-    
-    ip = sessions[x_auth_token]
+
+    session = sessions[x_auth_token]
+    ip = session["ip"]
     url = f"https://{ip}{path}"
     headers = {"X-Auth-Token": x_auth_token}
     

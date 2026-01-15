@@ -1,22 +1,38 @@
 <template>
   <div class="app">
+    <!-- Connection Modal -->
+    <ConnectionModal
+      :issue-type="connectionIssue"
+      :is-retrying="isRetrying"
+      :last-check-timestamp="lastCheckTimestamp"
+      @retry="handleConnectionRetry"
+      @logout="handleLogout"
+    />
+
     <LoginForm v-if="!isAuthenticated" />
-    
+
     <div v-else class="console">
-      <ConsoleHeader :active-tab="activeTab" @change-tab="activeTab = $event" />
-      
-      <main class="console-content">
-        <component :is="currentView" />
-      </main>
+      <ConsoleHeader />
+
+      <div class="console-body">
+        <Sidebar :active-tab="activeTab" @change-tab="activeTab = $event" />
+
+        <main class="console-content">
+          <component :is="currentView" />
+        </main>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, ref, watch, onMounted, onUnmounted } from 'vue';
 import ConsoleHeader from './components/ConsoleHeader.vue';
+import Sidebar from './components/Sidebar.vue';
 import LoginForm from './components/LoginForm.vue';
+import ConnectionModal from './components/ConnectionModal.vue';
 import { useRedfish } from './composables/useRedfish';
+import { useNetworkState } from './composables/useNetworkState';
 import BIOSSettings from './views/BIOSSettings.vue';
 import Dashboard from './views/Dashboard.vue';
 import FRU from './views/FRU.vue';
@@ -26,25 +42,47 @@ import RemoteAccess from './views/RemoteAccess.vue';
 import UserManagement from './views/UserManagement.vue';
 
 // Destructure all required reactive properties and methods
-const { 
-  isAuthenticated, 
-  prioritizeFetch, 
-  systemData, 
-  managerData, 
-  chassisData, 
-  cache 
+const {
+  isAuthenticated,
+  prioritizeFetch,
+  systemData,
+  managerData,
+  chassisData,
+  cache,
+  logout,
+  getAuthToken
 } = useRedfish();
 
-const activeTab = ref('dashboard');
+// Network state management
+const {
+  connectionIssue,
+  isRetrying,
+  lastFrontendCheck,
+  lastBackendCheck,
+  retryConnection,
+  startConnectionMonitoring,
+  stopConnectionMonitoring
+} = useNetworkState();
+
+const lastCheckTimestamp = computed(() => {
+  if (connectionIssue.value === 'frontend') {
+    return lastFrontendCheck.value;
+  } else if (connectionIssue.value === 'backend') {
+    return lastBackendCheck.value;
+  }
+  return Date.now();
+});
+
+const activeTab = ref('raw');
 
 const views: Record<string, any> = {
+  raw: RawData,  
   dashboard: Dashboard,
   hardware: Hardware,
   fru: FRU,
   remote: RemoteAccess,
   users: UserManagement,
   bios: BIOSSettings,
-  raw: RawData,
 };
 
 const currentView = computed(() => views[activeTab.value] || Dashboard);
@@ -95,5 +133,46 @@ watch([activeTab, systemData, managerData, chassisData, isAuthenticated], ([newT
       break;
   }
 }, { immediate: true });
+
+/**
+ * Handle connection retry from modal
+ */
+async function handleConnectionRetry() {
+  const token = getAuthToken();
+  const success = await retryConnection(token);
+
+  if (success) {
+    console.log('Connection restored successfully');
+  } else {
+    console.log('Connection retry failed');
+  }
+}
+
+/**
+ * Handle logout from connection modal
+ */
+function handleLogout() {
+  stopConnectionMonitoring();
+  logout();
+}
+
+/**
+ * Start connection monitoring when authenticated
+ */
+watch(isAuthenticated, (authenticated) => {
+  if (authenticated) {
+    const token = getAuthToken();
+    startConnectionMonitoring(token);
+  } else {
+    stopConnectionMonitoring();
+  }
+}, { immediate: true });
+
+/**
+ * Cleanup on unmount
+ */
+onUnmounted(() => {
+  stopConnectionMonitoring();
+});
 
 </script>
